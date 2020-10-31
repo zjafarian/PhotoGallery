@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.squareup.picasso.Picasso;
 
 import org.maktab.photogallery.R;
@@ -85,7 +86,12 @@ public class PhotoGalleryFragment extends Fragment {
         }
 
         public void bindGalleryItem(GalleryItem item) {
-            Picasso.get()
+          /*  Picasso.get()
+                    .load(item.getUrl())
+                    .placeholder(R.mipmap.ic_android_placeholder)
+                    .into(mImageViewItem);*/
+
+            Glide.with(getContext())
                     .load(item.getUrl())
                     .placeholder(R.mipmap.ic_android_placeholder)
                     .into(mImageViewItem);
