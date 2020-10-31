@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
+import android.util.LruCache;
 
 import androidx.annotation.NonNull;
 
@@ -18,6 +19,7 @@ public class ThumbnailDownloader<T> extends HandlerThread {
 
     public static final String TAG = "ThumbnailDownloader";
     private static final int WHAT_THUMBNAIL_DOWNLOAD = 1;
+    private LruCache<String, Bitmap> mLruCache;
 
     private Handler mHandlerRequest;
     private Handler mHandlerResponse;
@@ -33,10 +35,26 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         mListener = listener;
     }
 
+    public LruCache<String, Bitmap> getLruCache() {
+        return mLruCache;
+    }
+
+    public void setLruCache(LruCache<String, Bitmap> lruCache) {
+        mLruCache = lruCache;
+    }
+
     public ThumbnailDownloader(Handler uiHandler) {
         super(TAG);
 
         mHandlerResponse = uiHandler;
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        int cacheSize = maxMemory / 8;
+        mLruCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getByteCount() / 1024;
+            }
+        };
     }
 
     @Override
@@ -75,6 +93,9 @@ public class ThumbnailDownloader<T> extends HandlerThread {
         byte[] bitmapBytes = flickrFetcher.getUrlBytes(url);
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+        if (getResourceFromMemoryCache(url) == null)
+            mLruCache.put(url, bitmap);
+
 
         mHandlerResponse.post(new Runnable() {
             @Override
@@ -87,6 +108,11 @@ public class ThumbnailDownloader<T> extends HandlerThread {
             }
         });
     }
+
+    public Bitmap getResourceFromMemoryCache(String key) {
+        return mLruCache.get(key);
+    }
+
 
     public void queueThumbnail(T target, String url) {
         mRequestMap.put(target, url);

@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,6 +29,7 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView mRecyclerView;
     private PhotoRepository mRepository;
+    private LruCache<String, Bitmap> mLruCache;
 
     private ThumbnailDownloader<PhotoHolder> mThumbnailDownloader;
 
@@ -94,6 +96,7 @@ public class PhotoGalleryFragment extends Fragment {
         mThumbnailDownloader = new ThumbnailDownloader(uiHandler);
         mThumbnailDownloader.start();
         mThumbnailDownloader.getLooper();
+        mLruCache = mThumbnailDownloader.getLruCache();
         mThumbnailDownloader.setListener(
                 new ThumbnailDownloader.ThumbnailDownloaderListener<PhotoHolder>() {
                     @Override
@@ -126,7 +129,10 @@ public class PhotoGalleryFragment extends Fragment {
                     getResources().getDrawable(R.mipmap.ic_android_placeholder));
 
             //queue the message for download
-            mThumbnailDownloader.queueThumbnail(this, item.getUrl());
+            if (mLruCache.get(item.getUrl()) != null)
+                mImageViewItem.setImageBitmap(mLruCache.get(item.getUrl()));
+            else
+                mThumbnailDownloader.queueThumbnail(this, item.getUrl());
         }
 
         public void bindBitmap(Bitmap bitmap) {
@@ -184,7 +190,6 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
             super.onPostExecute(items);
-
             setupAdapter(items);
         }
     }
